@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/invoice.dart';
 import '../../core/parsers/currency_parser.dart';
@@ -56,33 +57,36 @@ class _InvoicesScreenState extends State<InvoicesScreen> with SingleTickerProvid
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daftar Transaksi'),
+        title: const Text('TRANSACTION LEDGER'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppTheme.primaryColor,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textSecondary,
+          indicatorColor: AppTheme.textPrimary,
+          indicatorWeight: 2,
+          labelColor: AppTheme.textPrimary,
+          unselectedLabelColor: AppTheme.textMuted,
+          labelStyle: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontFamily: 'monospace', fontSize: 11),
           tabs: [
-            Tab(text: 'Semua (${filtered.length})'),
-            Tab(text: 'Pending (${pending.length})'),
-            Tab(text: 'Lunas (${paid.length})'),
-            Tab(text: 'Selesai (${expired.length})'),
+            Tab(text: 'ALL [${filtered.length}]'),
+            Tab(text: 'PENDING [${pending.length}]'),
+            Tab(text: 'SETTLED [${paid.length}]'),
+            Tab(text: 'CLOSED [${expired.length}]'),
           ],
         ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _searchController,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               decoration: InputDecoration(
-                hintText: 'Cari invoice ID, nominal, atau catatan...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                hintText: 'Filter by ID, reference, or amount...',
+                prefixIcon: const Icon(Icons.search, size: 16, color: AppTheme.textMuted),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
+                        icon: const Icon(Icons.clear, size: 14),
                         onPressed: () => _searchController.clear(),
                       )
                     : null,
@@ -114,39 +118,39 @@ class _InvoicesScreenState extends State<InvoicesScreen> with SingleTickerProvid
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey.shade600),
-            const SizedBox(height: 12),
-            const Text('Tidak ada transaksi', style: TextStyle(color: AppTheme.textSecondary)),
+          children: const [
+            Icon(Icons.inbox_outlined, size: 28, color: AppTheme.textMuted),
+            SizedBox(height: 8),
+            Text(
+              'No matching transactions',
+              style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textMuted),
+            ),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       itemCount: list.length,
       itemBuilder: (ctx, index) {
         final inv = list[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+        final timeStr = DateFormat('yyyy-MM-dd HH:mm').format(inv.createdAt);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppTheme.border, width: 1),
+          ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(6),
             onTap: () => QrDialog.show(context, inv),
             child: Padding(
-              padding: const EdgeInsets.all(14.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkBg,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.qr_code_2_rounded, color: AppTheme.primaryColor),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,24 +160,33 @@ class _InvoicesScreenState extends State<InvoicesScreen> with SingleTickerProvid
                             Text(
                               CurrencyParser.formatRupiah(inv.totalAmount),
                               style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                fontFamily: 'monospace',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
                             if (inv.uniqueCode != 0) ...[
                               const SizedBox(width: 6),
                               Text(
-                                '(+${inv.uniqueCode})',
-                                style: const TextStyle(color: Colors.amber, fontSize: 12),
+                                '[${inv.uniqueCode > 0 ? "+${inv.uniqueCode}" : inv.uniqueCode}]',
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  color: AppTheme.warning,
+                                ),
                               ),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
-                          '${inv.id} ${inv.referenceId != null ? "• ${inv.referenceId}" : ""}',
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                          '${inv.id} • $timeStr',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                            color: AppTheme.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -185,8 +198,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> with SingleTickerProvid
                       if (inv.isPending) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Sisa ${inv.remainingSeconds}d',
-                          style: const TextStyle(color: Colors.grey, fontSize: 10),
+                          'TTL: ${inv.remainingSeconds}s',
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted),
                         ),
                       ],
                     ],

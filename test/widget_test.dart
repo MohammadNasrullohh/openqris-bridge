@@ -27,8 +27,9 @@ void main() {
     );
 
     await tester.pump();
-    expect(find.text('OpenQris Bridge'), findsOneWidget);
-    expect(find.text('Beranda'), findsOneWidget);
-    expect(find.text('Kasir'), findsOneWidget);
+    expect(find.text('OPENQRIS BRIDGE'), findsOneWidget);
+    expect(find.text('Console'), findsOneWidget);
+    expect(find.text('POS'), findsOneWidget);
+    expect(find.text('Ledger'), findsOneWidget);
   });
 }

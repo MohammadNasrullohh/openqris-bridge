@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/models/invoice.dart';
+import '../theme/app_theme.dart';
 
 class StatusPill extends StatelessWidget {
   final InvoiceStatus status;
@@ -8,57 +9,53 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
+    Color color;
     String label;
     IconData icon;
 
     switch (status) {
       case InvoiceStatus.paid:
-        bg = const Color(0xFF064E3B);
-        fg = const Color(0xFF34D399);
-        label = 'LUNAS';
-        icon = Icons.check_circle_rounded;
+        color = AppTheme.success;
+        label = 'PAID';
+        icon = Icons.check_circle_outline;
         break;
       case InvoiceStatus.pending:
-        bg = const Color(0xFF78350F);
-        fg = const Color(0xFFFBBF24);
-        label = 'MENUNGGU';
-        icon = Icons.access_time_filled_rounded;
+        color = AppTheme.warning;
+        label = 'PENDING';
+        icon = Icons.schedule;
         break;
       case InvoiceStatus.expired:
-        bg = const Color(0xFF334155);
-        fg = const Color(0xFF94A3B8);
-        label = 'KADALUARSA';
-        icon = Icons.hourglass_disabled_rounded;
+        color = AppTheme.textMuted;
+        label = 'EXPIRED';
+        icon = Icons.cancel_outlined;
         break;
       case InvoiceStatus.cancelled:
-        bg = const Color(0xFF7F1D1D);
-        fg = const Color(0xFFF87171);
-        label = 'DIBATALKAN';
-        icon = Icons.cancel_rounded;
+        color = AppTheme.danger;
+        label = 'VOID';
+        icon = Icons.block_outlined;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: fg),
+          Icon(icon, size: 11, color: color),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              color: fg,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'monospace',
+              letterSpacing: 0.6,
             ),
           ),
         ],

@@ -16,13 +16,14 @@ class MutationsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log Mutasi & Notifikasi'),
+        title: const Text('MUTATION INGESTION LOG'),
         actions: [
           IconButton(
-            tooltip: 'Status Listener',
+            tooltip: 'Listener Status',
             icon: Icon(
-              gateway.isListenerPermissionGranted ? Icons.notifications_active : Icons.notifications_off,
-              color: gateway.isListenerPermissionGranted ? AppTheme.primaryColor : Colors.amber,
+              Icons.circle,
+              size: 10,
+              color: gateway.isListenerPermissionGranted ? AppTheme.success : AppTheme.danger,
             ),
             onPressed: () => gateway.requestPermission(),
           ),
@@ -32,24 +33,18 @@ class MutationsScreen extends StatelessWidget {
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.mark_email_read_outlined, size: 48, color: Colors.grey.shade600),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Belum ada mutasi masuk',
-                    style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Notifikasi dari DANA, ShopeePay, GoPay, BCA dll akan muncul otomatis di sini.',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                    textAlign: TextAlign.center,
+                children: const [
+                  Icon(Icons.terminal_outlined, size: 28, color: AppTheme.textMuted),
+                  SizedBox(height: 8),
+                  Text(
+                    'No incoming mutation events logged',
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textMuted),
                   ),
                 ],
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: mutations.length,
               itemBuilder: (ctx, index) {
                 final mut = mutations[index];
@@ -64,83 +59,92 @@ class MutationsScreen extends StatelessWidget {
     GatewayProvider gateway,
     PaymentMutation mut,
   ) {
-    final timeStr = DateFormat('HH:mm:ss • dd MMM yyyy').format(mut.receivedAt);
+    final timeStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(mut.receivedAt);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.border, width: 1),
+      ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: mut.isMatched
-                ? AppTheme.primaryColor.withValues(alpha: 0.15)
-                : Colors.amber.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            mut.isMatched ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
-            color: mut.isMatched ? AppTheme.primaryColor : Colors.amber,
-          ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        leading: Icon(
+          mut.isMatched ? Icons.check_circle_outline : Icons.help_outline,
+          size: 18,
+          color: mut.isMatched ? AppTheme.success : AppTheme.warning,
         ),
         title: Row(
           children: [
             Text(
               CurrencyParser.formatRupiah(mut.amount),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppTheme.textPrimary,
+              ),
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.darkBg,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFF475569)),
+                color: AppTheme.surfaceElevated,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Text(
-                mut.provider.displayName,
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+                mut.provider.displayName.toUpperCase(),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
               ),
             ),
           ],
         ),
         subtitle: Text(
-          '${mut.senderName ?? "Pengirim Tidak Terdeteksi"} • $timeStr',
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          '${mut.senderName ?? "UNKNOWN_SENDER"} • $timeStr',
+          style: const TextStyle(fontFamily: 'monospace', color: AppTheme.textMuted, fontSize: 10),
         ),
         trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: mut.isMatched ? const Color(0xFF064E3B) : const Color(0xFF451A03),
-            borderRadius: BorderRadius.circular(12),
+            color: (mut.isMatched ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: (mut.isMatched ? AppTheme.success : AppTheme.warning).withValues(alpha: 0.3)),
           ),
           child: Text(
-            mut.isMatched ? 'MATCHED' : 'UNMATCHED',
+            mut.isMatched ? 'RECONCILED' : 'UNMATCHED',
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: mut.isMatched ? const Color(0xFF34D399) : Colors.amber,
+              fontFamily: 'monospace',
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: mut.isMatched ? AppTheme.success : AppTheme.warning,
             ),
           ),
         ),
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.border, width: 1)),
+              color: AppTheme.surfaceElevated,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (mut.matchedInvoiceId != null) ...[
                   Row(
                     children: [
-                      const Icon(Icons.link, size: 16, color: AppTheme.primaryColor),
+                      const Icon(Icons.link, size: 12, color: AppTheme.success),
                       const SizedBox(width: 6),
                       Text(
-                        'Cocok dengan: ${mut.matchedInvoiceId}',
+                        'LINKED INVOICE: ${mut.matchedInvoiceId}',
                         style: const TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontFamily: 'monospace',
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -148,27 +152,30 @@ class MutationsScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                 ],
                 const Text(
-                  'Judul Notifikasi:',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+                  'NOTIFICATION TITLE:',
+                  style: TextStyle(fontFamily: 'monospace', color: AppTheme.textMuted, fontSize: 10, fontWeight: FontWeight.w700),
                 ),
                 Text(
                   mut.rawTitle.isNotEmpty ? mut.rawTitle : '-',
-                  style: const TextStyle(fontSize: 12),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Isi Pesan Notifikasi:',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+                  'RAW PAYLOAD:',
+                  style: TextStyle(fontFamily: 'monospace', color: AppTheme.textMuted, fontSize: 10, fontWeight: FontWeight.w700),
                 ),
+                const SizedBox(height: 2),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkBg,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppTheme.border, width: 1),
                   ),
                   child: Text(
                     mut.rawMessage,
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppTheme.textSecondary),
                   ),
                 ),
               ],

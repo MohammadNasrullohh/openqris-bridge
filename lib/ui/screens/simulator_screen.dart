@@ -53,14 +53,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     final amount = CurrencyParser.parseRupiah(_amountController.text.trim());
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan nominal valid')),
+        const SnackBar(
+          content: Text('Enter a valid nominal'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
     final sender = _senderController.text.trim().isNotEmpty
         ? _senderController.text.trim()
-        : 'TEST USER';
+        : 'TEST_USER';
 
     final message = _generateNotificationMessage(_selectedProvider, amount, sender);
     final title = _selectedProvider.displayName;
@@ -88,10 +91,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       SnackBar(
         content: Text(
           matchedInvoice != null
-              ? '✅ Berhasil dicocokkan dengan ${matchedInvoice.id}!'
-              : '⚠️ Notifikasi diproses tapi tidak ada invoice pending yang cocok dengan nominal ini.',
+              ? 'Matched with ${matchedInvoice.id} • Webhook dispatched'
+              : 'Mutation parsed • No active invoice matched this exact nominal',
         ),
-        backgroundColor: matchedInvoice != null ? AppTheme.primaryColor : Colors.amber.shade800,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -103,7 +106,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Simulator Notifikasi & Webhook'),
+        title: const Text('INGESTION TEST BENCH'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -111,50 +114,53 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Pilih Aplikasi Pembayaran (E-Wallet / Bank)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSecondary),
+                    'SOURCE EMULATOR',
+                    style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 10, color: AppTheme.textMuted),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   DropdownButtonFormField<ProviderType>(
                     value: _selectedProvider,
-                    decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
-                    dropdownColor: AppTheme.surfaceDark,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textPrimary),
+                    dropdownColor: AppTheme.surfaceElevated,
                     items: ProviderType.values.map((p) {
                       return DropdownMenuItem(
                         value: p,
-                        child: Text('${p.displayName} (${p.description})'),
+                        child: Text('${p.displayName.toUpperCase()} (${p.packageName})'),
                       );
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _selectedProvider = val);
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   if (pendingInvoices.isNotEmpty) ...[
                     const Text(
-                      'Pilih Nominal dari Transaksi Pending:',
-                      style: TextStyle(fontSize: 12, color: AppTheme.secondaryColor, fontWeight: FontWeight.bold),
+                      'ACTIVE PENDING QUEUE (CLICK TO SYNC NOMINAL):',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.info, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
-                      spacing: 8,
+                      spacing: 6,
                       children: pendingInvoices.take(3).map((inv) {
                         return ActionChip(
-                          backgroundColor: AppTheme.darkBg,
+                          backgroundColor: AppTheme.surfaceElevated,
+                          side: const BorderSide(color: AppTheme.border, width: 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           label: Text(
-                            '${CurrencyParser.formatRupiah(inv.totalAmount)} (${inv.id})',
-                            style: const TextStyle(fontSize: 11, color: Colors.amber),
+                            '${CurrencyParser.formatRupiah(inv.totalAmount)} [${inv.id}]',
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.warning),
                           ),
                           onPressed: () {
                             _amountController.text = inv.totalAmount.toInt().toString();
@@ -166,62 +172,64 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   ],
 
                   const Text(
-                    'Nominal Transfer / Mutasi Masuk (Rupiah)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSecondary),
+                    'TRANSFER AMOUNT (IDR)',
+                    style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 10, color: AppTheme.textMuted),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                     decoration: const InputDecoration(
-                      prefixText: 'Rp ',
-                      hintText: '25.142',
+                      prefixText: 'IDR ',
+                      hintText: '25142',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  const Text(
+                    'SENDER ACCOUNT NAME',
+                    style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 10, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _senderController,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. AHMAD FAUZI',
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  const Text(
-                    'Nama Pengirim / Customer',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _senderController,
-                    decoration: const InputDecoration(
-                      hintText: 'Nama di rekening pengirim',
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    icon: const Icon(Icons.bolt_rounded),
-                    label: const Text('Simulasikan Notifikasi Masuk'),
+                    icon: const Icon(Icons.play_arrow, size: 16),
+                    label: const Text('DISPATCH SIMULATED NOTIFICATION'),
                     onPressed: _runSimulation,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             if (_lastSimulationResult != null) ...[
               const Text(
-                'Hasil Pengujian Terakhir:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                'EXECUTION TRACE',
+                style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 11, color: AppTheme.textMuted),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: _lastSimulationResult!['matched'] == true
-                        ? AppTheme.primaryColor
-                        : Colors.amber,
+                        ? AppTheme.success.withValues(alpha: 0.5)
+                        : AppTheme.warning.withValues(alpha: 0.5),
+                    width: 1,
                   ),
                 ),
                 child: Column(
@@ -231,42 +239,58 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       children: [
                         Icon(
                           _lastSimulationResult!['matched'] == true
-                              ? Icons.check_circle_rounded
-                              : Icons.info_outline,
+                              ? Icons.check_circle_outline
+                              : Icons.help_outline,
+                          size: 14,
                           color: _lastSimulationResult!['matched'] == true
-                              ? AppTheme.primaryColor
-                              : Colors.amber,
+                              ? AppTheme.success
+                              : AppTheme.warning,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           _lastSimulationResult!['matched'] == true
-                              ? 'MATCHED (INVOICE DILUNASI & WEBHOOK DISPATCHED)'
-                              : 'MUTASI TERCATAT (UNMATCHED)',
+                              ? 'MATCHED -> INVOICE RECONCILED -> WEBHOOK DISPATCHED'
+                              : 'MUTASI LOGGED -> UNMATCHED (NO PENDING INVOICE)',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
                             color: _lastSimulationResult!['matched'] == true
-                                ? AppTheme.primaryColor
-                                : Colors.amber,
+                              ? AppTheme.success
+                              : AppTheme.warning,
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 20, color: Color(0xFF334155)),
-                    Text(
-                      'Pesan yang Ditiru:',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    const Divider(height: 16),
+                    const Text(
+                      'INTERCEPTED NOTIFICATION PAYLOAD:',
+                      style: TextStyle(fontFamily: 'monospace', color: AppTheme.textMuted, fontSize: 9, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _lastSimulationResult!['message'] as String,
-                      style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppTheme.border, width: 1),
+                      ),
+                      child: Text(
+                        _lastSimulationResult!['message'] as String,
+                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppTheme.textSecondary),
+                      ),
                     ),
                     if (_lastSimulationResult!['invoice_id'] != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'Invoice Dilunasi: ${_lastSimulationResult!['invoice_id']}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                        'SETTLED INVOICE: ${_lastSimulationResult!['invoice_id']}',
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.success,
+                        ),
                       ),
                     ],
                   ],

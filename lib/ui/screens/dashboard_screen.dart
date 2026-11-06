@@ -26,12 +26,18 @@ class DashboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OpenQris Bridge'),
+        title: const Row(
+          children: [
+            Icon(Icons.hub_outlined, size: 18, color: AppTheme.textPrimary),
+            SizedBox(width: 8),
+            Text('OPENQRIS BRIDGE'),
+          ],
+        ),
         actions: [
           IconButton(
-            tooltip: 'Pengaturan Gateway',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => onNavigate(4), // Navigate to Settings
+            tooltip: 'Settings',
+            icon: const Icon(Icons.tune_outlined, size: 18),
+            onPressed: () => onNavigate(5),
           ),
         ],
       ),
@@ -45,147 +51,108 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // System Status Banner
-              _buildStatusBanner(context, gateway),
-              const SizedBox(height: 16),
+              // System Topology Status Box
+              _buildSystemStatus(context, gateway),
+              const SizedBox(height: 14),
 
-              // Metric Cards Row
+              // KPI Row
               Row(
                 children: [
                   Expanded(
-                    child: _buildMetricCard(
-                      title: 'Total Pendapatan',
+                    child: _buildKpiBox(
+                      label: 'SETTLED VOLUME',
                       value: CurrencyParser.formatRupiah(totalRevenue),
-                      icon: Icons.account_balance_wallet_rounded,
-                      color: AppTheme.primaryColor,
+                      subtext: '${paidInvoices.length} transactions',
+                      color: AppTheme.success,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildKpiBox(
+                      label: 'PENDING ESCROW',
+                      value: '${pendingInvoices.length}',
+                      subtext: 'Awaiting webhook',
+                      color: AppTheme.warning,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+
+              // Quick Action Toolbar
               Row(
                 children: [
                   Expanded(
-                    child: _buildMetricCard(
-                      title: 'Transaksi Sukses',
-                      value: '${paidInvoices.length} Lunas',
-                      icon: Icons.check_circle_outline_rounded,
-                      color: Colors.greenAccent,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('New Invoice / POS'),
+                      onPressed: () => onNavigate(1),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: _buildMetricCard(
-                      title: 'Menunggu Bayar',
-                      value: '${pendingInvoices.length} Pending',
-                      icon: Icons.hourglass_top_rounded,
-                      color: Colors.amberAccent,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.terminal_outlined, size: 16),
+                      label: const Text('Test Bench'),
+                      onPressed: () => onNavigate(3),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
 
-              // Fast Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      icon: const Icon(Icons.point_of_sale_rounded),
-                      label: const Text('Kasir QRIS'),
-                      onPressed: () => onNavigate(1), // POS
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      icon: const Icon(Icons.science_outlined),
-                      label: const Text('Simulator Test'),
-                      onPressed: () => onNavigate(3), // Simulator
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Section: Active Pending Invoices
+              // Active Pending Queue
               if (pendingInvoices.isNotEmpty) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Menunggu Pembayaran',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => onNavigate(2), // Invoices Tab
-                      child: const Text('Lihat Semua'),
-                    ),
-                  ],
-                ),
+                _buildSectionHeader('ACTIVE PENDING INVOICES (${pendingInvoices.length})'),
                 const SizedBox(height: 8),
-                ...pendingInvoices.take(3).map((inv) => _buildInvoiceCard(context, inv)),
+                ...pendingInvoices.take(3).map((inv) => _buildInvoiceItem(context, inv)),
                 const SizedBox(height: 16),
               ],
 
-              // Section: Recent Invoices
+              // Recent Transaction Log
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Riwayat Transaksi Terakhir',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                  _buildSectionHeader('TRANSACTION LEDGER'),
+                  InkWell(
+                    onTap: () => onNavigate(2),
+                    child: const Text(
+                      'VIEW ALL',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => onNavigate(2),
-                    child: const Text('Lihat Semua'),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
+
               if (invoices.isEmpty)
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(vertical: 32),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
-                    borderRadius: BorderRadius.circular(16),
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppTheme.border, width: 1),
                   ),
-                  child: Center(
+                  child: const Center(
                     child: Column(
                       children: [
-                        Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey.shade600),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Belum ada transaksi',
-                          style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Tekan "Kasir QRIS" untuk membuat QR transaksi pertama',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                          textAlign: TextAlign.center,
+                        Icon(Icons.inbox_outlined, size: 28, color: AppTheme.textMuted),
+                        SizedBox(height: 8),
+                        Text(
+                          'No transactions recorded',
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                         ),
                       ],
                     ),
                   ),
                 )
               else
-                ...invoices.take(5).map((inv) => _buildInvoiceCard(context, inv)),
+                ...invoices.take(6).map((inv) => _buildInvoiceItem(context, inv)),
             ],
           ),
         ),
@@ -193,78 +160,91 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBanner(BuildContext context, GatewayProvider gateway) {
-    final hasPermission = gateway.isListenerPermissionGranted;
-    final serverRunning = gateway.isServerRunning;
+  Widget _buildSystemStatus(BuildContext context, GatewayProvider gateway) {
+    final hasPerm = gateway.isListenerPermissionGranted;
+    final serverOn = gateway.isServerRunning;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: hasPermission ? const Color(0xFF065F46) : const Color(0xFF991B1B),
-          width: 1,
-        ),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                hasPermission ? Icons.radio_button_checked : Icons.warning_amber_rounded,
-                color: hasPermission ? AppTheme.primaryColor : Colors.amber,
-                size: 20,
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasPerm ? AppTheme.success : AppTheme.danger,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  hasPermission
-                      ? 'Listener Notifikasi Aktif'
-                      : 'Izin Akses Notifikasi Diperlukan',
+                  hasPerm ? 'NOTIFICATION LISTENER: ACTIVE' : 'NOTIFICATION LISTENER: ACCESS REQUIRED',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: hasPermission ? Colors.white : Colors.amber,
-                    fontSize: 14,
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: hasPerm ? AppTheme.textPrimary : AppTheme.warning,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ),
-              if (!hasPermission && gateway.nativeBridgeService.isAndroidSupported)
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    backgroundColor: Colors.amber,
+              if (!hasPerm && gateway.nativeBridgeService.isAndroidSupported)
+                SizedBox(
+                  height: 28,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10)),
+                    onPressed: () => gateway.requestPermission(),
+                    child: const Text('Grant Access', style: TextStyle(fontSize: 11)),
                   ),
-                  onPressed: () => gateway.requestPermission(),
-                  child: const Text('Aktifkan', style: TextStyle(fontSize: 12, color: Colors.black)),
                 ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            hasPermission
-                ? 'Aplikasi siap mendengarkan mutasi otomatis dari DANA, ShopeePay, GoPay, OVO, BCA, Livin, BRImo.'
-                : 'Diperlukan untuk membaca pop-up notifikasi pembayaran masuk dari aplikasi e-wallet.',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-          ),
-          const Divider(height: 20, color: Color(0xFF334155)),
+          const Divider(),
+          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                serverRunning ? Icons.dns_rounded : Icons.dns_outlined,
-                size: 16,
-                color: serverRunning ? AppTheme.secondaryColor : Colors.grey,
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: serverOn ? AppTheme.info : AppTheme.textMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    serverOn
+                        ? 'EMBEDDED SERVER: PORT ${gateway.activeServerPort ?? 8080}'
+                        : 'EMBEDDED SERVER: OFF',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                serverRunning
-                    ? 'Server REST & WS: Port ${gateway.activeServerPort ?? 8080} (Siap Terima API)'
-                    : 'Server REST: Nonaktif',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: serverRunning ? Colors.white : Colors.grey,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 12, color: AppTheme.textMuted),
+                  const SizedBox(width: 4),
+                  Text(
+                    gateway.config.webhookEnabled ? 'HMAC-SHA256' : 'WEBHOOK OFF',
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted),
+                  ),
+                ],
               ),
             ],
           ),
@@ -273,67 +253,81 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
+  Widget _buildKpiBox({
+    required String label,
     required String value,
-    required IconData icon,
+    required String subtext,
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-              ),
-              Icon(icon, size: 20, color: color),
-            ],
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textMuted,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-              letterSpacing: -0.5,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: -0.3,
             ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtext,
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInvoiceCard(BuildContext context, Invoice inv) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontFamily: 'monospace',
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: AppTheme.textMuted,
+        letterSpacing: 0.6,
+      ),
+    );
+  }
+
+  Widget _buildInvoiceItem(BuildContext context, Invoice inv) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.border, width: 1),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(6),
         onTap: () => QrDialog.show(context, inv),
         child: Padding(
-          padding: const EdgeInsets.all(14.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.qr_code_2_rounded, color: AppTheme.primaryColor),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,24 +337,33 @@ class DashboardScreen extends StatelessWidget {
                         Text(
                           CurrencyParser.formatRupiah(inv.totalAmount),
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
                         if (inv.uniqueCode != 0) ...[
                           const SizedBox(width: 6),
                           Text(
-                            '(+${inv.uniqueCode})',
-                            style: const TextStyle(color: Colors.amber, fontSize: 12),
+                            '[${inv.uniqueCode > 0 ? "+${inv.uniqueCode}" : inv.uniqueCode}]',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: AppTheme.warning,
+                            ),
                           ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${inv.id} • ${inv.referenceId ?? "Tanpa Ref"}',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                      '${inv.id}${inv.referenceId != null ? " • ${inv.referenceId}" : ""}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10,
+                        color: AppTheme.textMuted,
+                      ),
                     ),
                   ],
                 ),

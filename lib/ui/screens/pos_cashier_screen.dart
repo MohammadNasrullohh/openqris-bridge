@@ -19,7 +19,7 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
   final TextEditingController _refController = TextEditingController();
   Invoice? _currentInvoice;
 
-  final List<double> _presetAmounts = [10000, 25000, 50000, 75000, 100000, 150000];
+  final List<double> _presetAmounts = [10000, 25000, 50000, 75000, 100000, 250000];
 
   @override
   void dispose() {
@@ -34,7 +34,10 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
 
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan nominal pembayaran yang valid (misal: 25.000)')),
+        const SnackBar(
+          content: Text('Enter a valid transaction nominal (e.g. 25000)'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -44,8 +47,8 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
     if (gateway.config.staticQris.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Atur string QRIS Statis dasar di menu Pengaturan terlebih dahulu!'),
-          backgroundColor: Colors.amber,
+          content: Text('Warning: Static QRIS base string is empty. Set it in Settings.'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -72,7 +75,6 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
   Widget build(BuildContext context) {
     final gateway = context.watch<GatewayProvider>();
 
-    // Update _currentInvoice state if it changed in provider (e.g. marked PAID!)
     if (_currentInvoice != null) {
       final updated = gateway.invoiceManager.getInvoice(_currentInvoice!.id);
       if (updated != null && updated.status != _currentInvoice!.status) {
@@ -82,12 +84,12 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kasir QRIS Cepat'),
+        title: const Text('POINT OF SALE / CASHIER'),
         actions: [
           if (_currentInvoice != null)
             IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Reset Kasir',
+              icon: const Icon(Icons.refresh, size: 18),
+              tooltip: 'New Transaction',
               onPressed: _resetCashier,
             ),
         ],
@@ -100,38 +102,44 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
 
   Widget _buildInputForm() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Nominal Pembayaran',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+            'BASE NOMINAL',
+            style: TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
             decoration: const InputDecoration(
-              prefixText: 'Rp ',
-              prefixStyle: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
-              hintText: '25.000',
-              hintStyle: TextStyle(fontSize: 32, color: Colors.white24),
+              prefixText: 'IDR ',
+              prefixStyle: TextStyle(fontFamily: 'monospace', fontSize: 24, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+              hintText: '25000',
             ),
           ),
-          const SizedBox(height: 16),
-          // Quick amount chip buttons
+          const SizedBox(height: 12),
+
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: _presetAmounts.map((amt) {
               return ActionChip(
-                backgroundColor: AppTheme.surfaceDark,
-                side: const BorderSide(color: Color(0xFF334155)),
+                backgroundColor: AppTheme.surfaceElevated,
+                side: const BorderSide(color: AppTheme.border, width: 1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 label: Text(
                   CurrencyParser.formatRupiah(amt),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () {
                   _amountController.text = amt.toInt().toString();
@@ -139,25 +147,28 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
+
           const Text(
-            'Catatan / Nomor Meja / Order ID (Opsional)',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+            'REFERENCE ID / NOTE (OPTIONAL)',
+            style: TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           TextField(
             controller: _refController,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
             decoration: const InputDecoration(
-              hintText: 'Contoh: MEJA-07 atau INV-99',
+              hintText: 'e.g. ORDER-1029 or TABLE-04',
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
+
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            icon: const Icon(Icons.qr_code_2_rounded, size: 24),
-            label: const Text('Tampilkan QRIS Dinamis', style: TextStyle(fontSize: 18)),
+            icon: const Icon(Icons.qr_code_2, size: 18),
+            label: const Text('GENERATE DYNAMIC QRIS'),
             onPressed: _generateQr,
           ),
         ],
@@ -170,37 +181,38 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
     final qrData = inv.qrisRaw.isNotEmpty ? inv.qrisRaw : 'SAMPLE_QRIS_STRING';
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isPaid) ...[
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF064E3B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primaryColor),
+                color: AppTheme.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.success.withValues(alpha: 0.4), width: 1),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 40),
-                  SizedBox(width: 16),
+                  const Icon(Icons.check_circle_outline, color: AppTheme.success, size: 28),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'PEMBAYARAN DITERIMA!',
+                        const Text(
+                          'PAYMENT CONFIRMED (PAID)',
                           style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontFamily: 'monospace',
+                            color: AppTheme.success,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
                           ),
                         ),
                         Text(
-                          'Mutasi berhasil dicocokkan otomatis & Webhook terkirim.',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          'Mutation reconciled • Webhook dispatched: ${inv.id}',
+                          style: const TextStyle(fontFamily: 'monospace', color: AppTheme.textSecondary, fontSize: 11),
                         ),
                       ],
                     ),
@@ -208,124 +220,97 @@ class _PosCashierScreenState extends State<PosCashierScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
           ],
 
-          // QR Code Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: isPaid
-                ? const SizedBox(
-                    width: 240,
-                    height: 240,
-                    child: Center(
-                      child: Icon(Icons.verified_rounded, size: 100, color: AppTheme.primaryColor),
-                    ),
-                  )
-                : QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 240,
-                    backgroundColor: Colors.white,
-                  ),
-          ),
-          const SizedBox(height: 20),
-
-          // Total Amount
-          Text(
-            CurrencyParser.formatRupiah(inv.totalAmount),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.primaryColor,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Nominal: ${CurrencyParser.formatRupiah(inv.baseAmount)}',
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          // QR Card
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white, width: 1),
               ),
-              if (inv.uniqueCode != 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Kode Unik: ${inv.uniqueCode > 0 ? "+${inv.uniqueCode}" : inv.uniqueCode}',
-                    style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+              child: isPaid
+                  ? const SizedBox(
+                      width: 220,
+                      height: 220,
+                      child: Center(
+                        child: Icon(Icons.verified, size: 72, color: AppTheme.success),
+                      ),
+                    )
+                  : QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 220,
+                      backgroundColor: Colors.white,
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  CurrencyParser.formatRupiah(inv.totalAmount),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Base: ${CurrencyParser.formatRupiah(inv.baseAmount)} • Unique Code: ${inv.uniqueCode >= 0 ? "+${inv.uniqueCode}" : inv.uniqueCode}',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textMuted),
+                ),
+                const SizedBox(height: 8),
+                StatusPill(status: inv.status),
+                const SizedBox(height: 6),
+                Text(
+                  'ID: ${inv.id}${inv.referenceId != null ? " • REF: ${inv.referenceId}" : ""}',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted),
+                ),
               ],
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          StatusPill(status: inv.status),
-          const SizedBox(height: 8),
-          Text(
-            'Invoice: ${inv.id} ${inv.referenceId != null ? "• ${inv.referenceId}" : ""}',
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           if (!isPaid) ...[
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(12),
+                color: AppTheme.surfaceElevated,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.secondaryColor),
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.info),
                   ),
-                  SizedBox(width: 10),
+                  SizedBox(width: 8),
                   Text(
-                    'Menunggu transfer dari DANA / Shopee / BCA / E-Wallet...',
-                    style: TextStyle(color: AppTheme.secondaryColor, fontSize: 12),
+                    'Listening for incoming payment notification...',
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
           ],
 
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isPaid ? AppTheme.primaryColor : AppTheme.surfaceDark,
-                    foregroundColor: isPaid ? Colors.black : Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  icon: const Icon(Icons.add_shopping_cart_rounded),
-                  label: Text(isPaid ? 'Transaksi Baru' : 'Selesai / Transaksi Baru'),
-                  onPressed: _resetCashier,
-                ),
-              ),
-            ],
+          OutlinedButton.icon(
+            icon: const Icon(Icons.arrow_back, size: 14),
+            label: Text(isPaid ? 'NEW TRANSACTION' : 'CANCEL / NEW TRANSACTION'),
+            onPressed: _resetCashier,
           ),
         ],
       ),

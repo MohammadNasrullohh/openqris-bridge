@@ -25,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late List<String> _enabledProviders;
 
   String? _qrisValidationStatus;
+  bool _isQrisValid = false;
 
   @override
   void initState() {
@@ -57,7 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _validateQrisText(String raw) {
     final clean = raw.trim();
     if (clean.isEmpty) {
-      setState(() => _qrisValidationStatus = null);
+      setState(() {
+        _qrisValidationStatus = null;
+        _isQrisValid = false;
+      });
       return;
     }
 
@@ -65,13 +69,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final payload = QrisParser.parse(clean);
       if (payload.merchantName != null && payload.merchantName!.isNotEmpty) {
         setState(() {
-          _qrisValidationStatus = 'Valid: ${payload.merchantName} (${payload.merchantCity ?? "ID"}) • CRC: ${payload.isValidCrc ? "OK" : "Perlu Koreksi"}';
+          _isQrisValid = payload.isValidCrc;
+          _qrisValidationStatus = 'MERCHANT: ${payload.merchantName} [${payload.merchantCity ?? "ID"}] • CRC: ${payload.isValidCrc ? "VALID" : "CORRUPT"}';
         });
       } else {
-        setState(() => _qrisValidationStatus = 'Format QRIS terdeteksi tapi nama toko tidak ditemukan.');
+        setState(() {
+          _isQrisValid = false;
+          _qrisValidationStatus = 'PARSED WITH WARNING: Tag 59 (Merchant Name) absent';
+        });
       }
     } catch (_) {
-      setState(() => _qrisValidationStatus = 'Bukan string EMVCo QRIS yang valid.');
+      setState(() {
+        _isQrisValid = false;
+        _qrisValidationStatus = 'INVALID_EMVCO_PAYLOAD';
+      });
     }
   }
 
@@ -97,8 +108,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pengaturan berhasil disimpan'),
-          backgroundColor: AppTheme.primaryColor,
+          content: Text('Configuration committed to storage'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -108,7 +119,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final gateway = context.read<GatewayProvider>();
     if (_webhookUrlController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan URL webhook terlebih dahulu')),
+        const SnackBar(
+          content: Text('Specify webhook destination URL first'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -122,22 +136,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.surfaceDark,
-          title: Text(log.isSuccess ? '✅ Webhook Berhasil' : '❌ Webhook Gagal'),
+          backgroundColor: AppTheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: const BorderSide(color: AppTheme.border, width: 1),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                log.isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                size: 18,
+                color: log.isSuccess ? AppTheme.success : AppTheme.danger,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                log.isSuccess ? 'WEBHOOK DISPATCH SUCCEEDED' : 'WEBHOOK DISPATCH FAILED',
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Status Code: ${log.statusCode ?? "N/A"}'),
-              Text('Latency: ${log.durationMs} ms'),
-              if (log.error != null) Text('Error: ${log.error}', style: const TextStyle(color: Colors.red)),
-              if (log.responseBody != null) Text('Response: ${log.responseBody}'),
+              Text('HTTP STATUS: ${log.statusCode ?? "CONNECTION_FAILED"}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+              Text('ROUND-TRIP LATENCY: ${log.durationMs}ms', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+              if (log.error != null) ...[
+                const SizedBox(height: 6),
+                Text('ERROR: ${log.error}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.danger)),
+              ],
+              if (log.responseBody != null) ...[
+                const SizedBox(height: 6),
+                const Text('RESPONSE PAYLOAD:', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted)),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppTheme.border, width: 1),
+                  ),
+                  child: Text(
+                    log.responseBody!,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textSecondary),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Tutup'),
+              child: const Text('DISMISS'),
             ),
           ],
         ),
@@ -149,11 +199,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pengaturan Gateway'),
+        title: const Text('GATEWAY CONFIGURATION'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save_rounded),
-            tooltip: 'Simpan',
+            icon: const Icon(Icons.check, size: 18),
+            tooltip: 'Commit Changes',
             onPressed: _saveAll,
           ),
         ],
@@ -164,27 +214,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. Static QRIS Base Configuration
-            _buildSectionHeader('1. QRIS Statis Toko (DANA / Shopee / BCA / Bank)'),
-            const SizedBox(height: 8),
+            _buildSectionHeader('01 / BASE STATIC QRIS TEMPLATE'),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Salin teks/string QRIS statis dari aplikasi DANA Bisnis, ShopeePay Merchant, atau QRIS cetak Anda:',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    'Raw EMVCo string extracted from DANA Bisnis, ShopeePay Merchant, or BCA QRIS:',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _qrisController,
                     maxLines: 3,
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
                     decoration: const InputDecoration(
                       hintText: '00020101021126610016ID.CO.SHOPEE.WWW...',
                     ),
@@ -192,144 +242,157 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   if (_qrisValidationStatus != null) ...[
                     const SizedBox(height: 8),
-                    Text(
-                      _qrisValidationStatus!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _qrisValidationStatus!.startsWith('Valid')
-                            ? AppTheme.primaryColor
-                            : Colors.amber,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          _isQrisValid ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                          size: 14,
+                          color: _isQrisValid ? AppTheme.success : AppTheme.warning,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _qrisValidationStatus!,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: _isQrisValid ? AppTheme.success : AppTheme.warning,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // 2. Unique Code Strategy
-            _buildSectionHeader('2. Pengaturan Kode Unik & Kadaluarsa'),
-            const SizedBox(height: 8),
+            _buildSectionHeader('02 / UNIQUE CODE POLICY & TTL'),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Strategi Kode Unik', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 8),
+                  const Text('ALLOCATION STRATEGY', style: TextStyle(fontFamily: 'monospace', fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textMuted)),
+                  const SizedBox(height: 6),
                   DropdownButtonFormField<UniqueCodeStrategy>(
                     value: _strategy,
-                    decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 8)),
-                    dropdownColor: AppTheme.surfaceDark,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textPrimary),
+                    dropdownColor: AppTheme.surfaceElevated,
                     items: UniqueCodeStrategy.values.map((s) {
-                      return DropdownMenuItem(value: s, child: Text(s.label));
+                      return DropdownMenuItem(value: s, child: Text(s.label.toUpperCase()));
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _strategy = val);
                     },
                   ),
-                  const SizedBox(height: 14),
-                  const Text('Waktu Kadaluarsa Transaksi (Menit)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
+                  const Text('INVOICE EXPIRATION TTL (MINUTES)', style: TextStyle(fontFamily: 'monospace', fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textMuted)),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _expiryController,
                     keyboardType: TextInputType.number,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                     decoration: const InputDecoration(hintText: '15'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // 3. Webhook Integration
-            _buildSectionHeader('3. Webhook Notifikasi ke Server Toko'),
-            const SizedBox(height: 8),
+            _buildSectionHeader('03 / WEBHOOK DISPATCH CHANNELS'),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Aktifkan Webhook', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    title: const Text('DISPATCH WEBHOOKS', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 12)),
                     value: _webhookEnabled,
                     onChanged: (val) => setState(() => _webhookEnabled = val),
                   ),
-                  const Text('URL Endpoint Webhook Merchant:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  const Text('DESTINATION URL', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _webhookUrlController,
-                    decoration: const InputDecoration(hintText: 'https://tokosaya.com/api/payment/webhook'),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    decoration: const InputDecoration(hintText: 'https://api.yourdomain.com/v1/qris/webhook'),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Secret Key (HMAC-SHA256):', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  const Text('SHARED SECRET (HMAC-SHA256)', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _secretKeyController,
-                    decoration: const InputDecoration(hintText: 'secret_key_anda_123'),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    decoration: const InputDecoration(hintText: 'secret_key_entropy_string'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.send_rounded, size: 16),
-                    label: const Text('Kirim Test Ping Webhook'),
+                    icon: const Icon(Icons.send_outlined, size: 14),
+                    label: const Text('TEST WEBHOOK PING'),
                     onPressed: _testWebhook,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // 4. Embedded Server Settings
-            _buildSectionHeader('4. Embedded Server HP (REST API & WebSocket)'),
-            const SizedBox(height: 8),
+            _buildSectionHeader('04 / EMBEDDED LOCAL HTTP & WS SERVER'),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Jalankan Local Server di HP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: const Text('Website / POS di jaringan yang sama bisa langsung panggil API HP ini', style: TextStyle(fontSize: 11)),
+                    title: const Text('RUN LOCAL REST/WS SERVER', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 12)),
+                    subtitle: const Text('Enables local network clients and POS devices to call API directly on device', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                     value: _serverEnabled,
                     onChanged: (val) => setState(() => _serverEnabled = val),
                   ),
-                  const SizedBox(height: 8),
-                  const Text('Port Server:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  const SizedBox(height: 6),
+                  const Text('BIND PORT', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _portController,
                     keyboardType: TextInputType.number,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                     decoration: const InputDecoration(hintText: '8080'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 28),
-
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              icon: const Icon(Icons.save_rounded),
-              label: const Text('Simpan Seluruh Pengaturan', style: TextStyle(fontSize: 16)),
-              onPressed: _saveAll,
-            ),
             const SizedBox(height: 24),
+
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              onPressed: _saveAll,
+              child: const Text('COMMIT SETTINGS'),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -340,9 +403,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.secondaryColor,
+        fontFamily: 'monospace',
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: AppTheme.textMuted,
+        letterSpacing: 0.8,
       ),
     );
   }

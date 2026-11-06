@@ -78,38 +78,51 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex > 4 ? 4 : _currentIndex,
-        onDestinationSelected: _navigateToIndex,
-        backgroundColor: AppTheme.surfaceDark,
-        indicatorColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded, color: AppTheme.primaryColor),
-            label: 'Beranda',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.point_of_sale_outlined),
-            selectedIcon: Icon(Icons.point_of_sale_rounded, color: AppTheme.primaryColor),
-            label: 'Kasir',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor),
-            label: 'Transaksi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.science_outlined),
-            selectedIcon: Icon(Icons.science_rounded, color: AppTheme.primaryColor),
-            label: 'Simulator',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sync_alt_outlined),
-            selectedIcon: Icon(Icons.sync_alt_rounded, color: AppTheme.primaryColor),
-            label: 'Mutasi',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppTheme.border, width: 1)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _navigateToIndex,
+          backgroundColor: AppTheme.surface,
+          indicatorColor: AppTheme.border,
+          elevation: 0,
+          height: 60,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.grid_view, size: 18),
+              selectedIcon: Icon(Icons.grid_view_rounded, size: 18, color: AppTheme.textPrimary),
+              label: 'Console',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined, size: 18),
+              selectedIcon: Icon(Icons.point_of_sale, size: 18, color: AppTheme.textPrimary),
+              label: 'POS',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_outlined, size: 18),
+              selectedIcon: Icon(Icons.receipt, size: 18, color: AppTheme.textPrimary),
+              label: 'Ledger',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.terminal_outlined, size: 18),
+              selectedIcon: Icon(Icons.terminal, size: 18, color: AppTheme.textPrimary),
+              label: 'Bench',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.stream_outlined, size: 18),
+              selectedIcon: Icon(Icons.stream, size: 18, color: AppTheme.textPrimary),
+              label: 'Stream',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.tune_outlined, size: 18),
+              selectedIcon: Icon(Icons.tune, size: 18, color: AppTheme.textPrimary),
+              label: 'Config',
+            ),
+          ],
+        ),
       ),
     );
   }
