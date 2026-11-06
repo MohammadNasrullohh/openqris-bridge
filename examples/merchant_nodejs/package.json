@@ -1,0 +1,12 @@
+{
+  "name": "merchant-nodejs-demo",
+  "version": "1.0.0",
+  "description": "Contoh integrasi merchant Node.js dengan OpenQris Bridge Flutter",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
